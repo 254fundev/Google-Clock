@@ -1,1 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Gear Clock</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500;700&family=Roboto:wght@400;500;700&display=swap');
+
+:root {
+  --blue:   #4285F4;
+  --red:    #EA4335;
+  --yellow: #FBBC05;
+  --green:  #34A853;
+  --bg:     #0f1011;
+  --card:   #1a1b1c;
+  --border: #2a2b2d;
+  --text:   #e8eaed;
+  --muted:  #5f6368;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Roboto', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-x: hidden;
+}
+
+header {
+  width: 100%;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.logo {
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+.b { color: var(--blue); }
+.r { color: var(--red); }
+.y { color: var(--yellow); }
+.g { color: var(--green); }
+
+.tagline {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+}
+
+.clock-wrap {
+  width: 100%;
+  max-width: 560px;
+  padding: 24px 16px 12px;
+}
+
+.clock-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  width: 100%;
+  min-height: 70px;
+}
+
+.c-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 5px;
+  transition: opacity 0.6s, transform 0.6s;
+}
+
+.c-unit.hidden {
+  opacity: 0;
+  transform: scale(0.7);
+  pointer-events: none;
+  width: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.c-val {
+  font-family: 'Roboto Mono', monospace;
+  font-weight: 700;
+  font-size: clamp(26px, 7.5vw, 54px);
+  line-height: 1;
+  color: var(--text);
+  min-width: 2ch;
+  text-align: center;
+  transition: color 0.12s;
+}
+
+.c-val.flash { color: var(--blue); }
+
+.c-lbl {
+  font-size: 7.5px;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 5px;
+}
+
+.c-sep {
+  font-family: 'Roboto Mono', monospace;
+  font-size: clamp(20px, 6vw, 46px);
+  font-weight: 300;
+  color: #333537;
+  padding-bottom: 22px;
+  user-select: none;
+  transition: opacity 0.4s;
+}
+
+.c-sep.hidden {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.status {
+  width: 100%;
+  max-width: 560px;
+  padding: 6px 16px 12px;
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.pill {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'Roboto Mono', monospace;
+  white-space: nowrap;
+}
+
+.pill em {
+  color: var(--blue);
+  font-style: normal;
+  font-weight: 500;
+}
+
+.prog-wrap {
+  flex: 1;
+  min-width: 60px;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  align-self: center;
+  overflow: hidden;
+}
+
+.prog-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--blue), var(--green));
+  border-radius: 2px;
+  width: 0%;
+}
+
+.start-zone {
+  margin-bottom: 16px;
+  transition: opacity 0.5s, max-height 0.6s;
+  max-height: 70px;
+  overflow: hidden;
+}
+
+.start-zone.gone {
+  opacity: 0;
+  max-height: 0;
+  pointer-events: none;
+}
+
+.btn-start {
+  padding: 13px 52px;
+  border-radius: 30px;
+  border: none;
+  background: var(--blue);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Roboto', sans-serif;
+  box-shadow: 0 3px 18px #4285F444;
+  transition: transform 0.1s, background 0.2s;
+}
+
+.btn-start:active { transform: scale(0.95); }
+
+.sec-label {
+  width: 100%;
+  max-width: 560px;
+  padding: 2px 16px 10px;
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.gear-grid {
+  width: 100%;
+  max-width: 560px;
+  padding: 0 10px 50px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.gc {
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 3px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+  transition: border-color 0.4s, box-shadow 0.4s, background 0.4s;
+}
+
+.glow-ring {
+  position: absolute;
+  inset: -2px;
+  border-radius: 11px;
+  border: 1.5px solid transparent;
+  pointer-events: none;
+  transition: border-color 0.3s, box-shadow 0.3s, opacity 0.3s;
+  opacity: 0;
+}
+
+.g-num {
+  font-size: 7px;
+  color: var(--muted);
+  font-family: 'Roboto Mono', monospace;
+  line-height: 1;
+}
+
+.g-svg-wrap {
+  width: 38px;
+  height: 38px;
+}
+
+.g-svg-wrap svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.g-lbl {
+  font-size: 6.5px;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 62px;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="b">G</span><span class="r">e</span><span class="y">a</span><span class="g">r</span><span class="b">s</span>
+  </div>
+  <span class="tagline">Time Engine</span>
+</header>
+
+<div class="clock-wrap">
+  <div class="clock-row" id="clockRow"></div>
+</div>
+
+<div class="status">
+  <div class="pill">Gear 1: <em id="sG1">0.00</em> rev</div>
+  <div class="pill">Gear 2: <em id="sG2">0.0000</em> rev</div>
+  <div class="prog-wrap"><div class="prog-bar" id="progBar"></div></div>
+  <div class="pill"><em id="sElapsed">0</em>s</div>
+</div>
+
+<div class="start-zone" id="startZone">
+  <button class="btn-start" id="btnStart">▶ Start</button>
+</div>
+
+<div class="sec-label">100 gears</div>
+<div class="gear-grid" id="gearGrid"></div>
+
+<script>
+const GEARS   = 100;
+const G1_SECS = 1;
+const RATIO   = 10;
+const COLORS  = ['#4285F4','#EA4335','#FBBC05','#34A853'];
+
+const LABELS = [
+  'Seconds','Minutes','Hours','Days','Weeks',
+  'Months','Years','Decades','Centuries','Millennia',
+  '10K Yrs','100K Yrs','1M Yrs','10M Yrs','100M Yrs',
+  '1B Yrs','10B Yrs','100B Yrs','1T Yrs','10T Yrs',
+  '100T Yrs','Eon','2 Eons','5 Eons','10 Eons',
+  '50 Eons','Galactic Yr','10 Gal Yrs','100 Gal Yrs','Stellar End',
+  'BH Era I','BH Era II','BH Era III','Proton Decay','Quantum I',
+  'Quantum II','Quantum III','Heat Death I','Heat Death II','Heat Death III',
+  ...Array.from({length: 60}, (_, i) => `Epoch ${i + 41}`)
+];
+
+const CLOCK_UNITS = [
+  { key: 'mil', label: 'Millennia', div: 31536000000,  mod: 1e9, gear: 9 },
+  { key: 'cen', label: 'Centuries', div: 3153600000,   mod: 10,  gear: 8 },
+  { key: 'dec', label: 'Decades',   div: 315360000,    mod: 10,  gear: 7 },
+  { key: 'yr',  label: 'Years',     div: 31536000,     mod: 10,  gear: 6 },
+  { key: 'mo',  label: 'Months',    div: 2628000,      mod: 12,  gear: 5 },
+  { key: 'wk',  label: 'Weeks',     div: 604800,       mod: 52,  gear: 4 },
+  { key: 'd',   label: 'Days',      div: 86400,        mod: 7,   gear: 3 },
+  { key: 'h',   label: 'Hours',     div: 3600,         mod: 24,  gear: 2 },
+  { key: 'm',   label: 'Minutes',   div: 60,           mod: 60,  gear: 1 },
+  { key: 's',   label: 'Seconds',   div: 1,            mod: 60,  gear: 0 },
+];
+
+function makeSVG(i) {
+  const color  = COLORS[i % 4];
+  const teeth  = 10 + (i % 3) * 2;
+  const cx = 19, cy = 19;
+  const ro = 15, ri = 11, rh = 3.5;
+  let pts = '';
+  for (let t = 0; t < teeth * 2; t++) {
+    const a = (Math.PI * 2 / (teeth * 2)) * t - Math.PI / 2;
+    const r = t % 2 === 0 ? ro : ri;
+    pts += `${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)} `;
+  }
+  let spokes = '';
+  for (let s = 0; s < 4; s++) {
+    const a  = (Math.PI / 2) * s;
+    const x1 = (cx + rh * Math.cos(a)).toFixed(2);
+    const y1 = (cy + rh * Math.sin(a)).toFixed(2);
+    const x2 = (cx + (ri - 1.5) * Math.cos(a)).toFixed(2);
+    const y2 = (cy + (ri - 1.5) * Math.sin(a)).toFixed(2);
+    spokes += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="2.5" stroke-linecap="round" opacity="0.55"/>`;
+  }
+  return `<svg viewBox="0 0 38 38" id="svg_${i}" xmlns="http://www.w3.org/2000/svg">
+    <g id="rotor_${i}">
+      <polygon points="${pts.trim()}" fill="${color}" opacity="0.88"/>
+      <circle cx="${cx}" cy="${cy}" r="${ri - 0.5}" fill="#0f1011"/>
+      ${spokes}
+      <circle cx="${cx}" cy="${cy}" r="${rh}" fill="${color}" opacity="0.65"/>
+    </g>
+  </svg>`;
+}
+
+function buildClock() {
+  const row = document.getElementById('clockRow');
+  CLOCK_UNITS.forEach((u, i) => {
+    if (i > 0) {
+      const sep = document.createElement('div');
+      sep.className = 'c-sep hidden';
+      sep.id = 'sep_' + u.key;
+      sep.textContent = ':';
+      row.appendChild(sep);
+    }
+    const el = document.createElement('div');
+    el.className = 'c-unit hidden';
+    el.id = 'cu_' + u.key;
+    el.innerHTML = `<div class="c-val" id="cv_${u.key}">00</div><div class="c-lbl">${u.label}</div>`;
+    row.appendChild(el);
+  });
+}
+
+function buildGrid() {
+  const grid = document.getElementById('gearGrid');
+  for (let i = 0; i < GEARS; i++) {
+    const card = document.createElement('div');
+    card.className = 'gc';
+    card.id = `gc_${i}`;
+    card.innerHTML = `
+      <div class="glow-ring" id="ring_${i}"></div>
+      <div class="g-num">#${i + 1}</div>
+      <div class="g-svg-wrap">${makeSVG(i)}</div>
+      <div class="g-lbl">${LABELS[i] || 'Epoch'}</div>`;
+    grid.appendChild(card);
+  }
+}
+
+let running  = false;
+let elapsed  = 0;
+let lastTs   = null;
+let rafId    = null;
+let shown    = new Set();
+let prevVals = {};
+
+function gearRevs(i) {
+  if (i >= 20) return 0;
+  return elapsed / (G1_SECS * Math.pow(RATIO, i));
+}
+
+function tick() {
+  CLOCK_UNITS.forEach((u, idx) => {
+    const revs = gearRevs(u.gear);
+    if ((revs > 0.001 || u.gear === 0) && !shown.has(u.key)) {
+      shown.add(u.key);
+      document.getElementById('cu_' + u.key).classList.remove('hidden');
+      const sep = document.getElementById('sep_' + u.key);
+      if (sep) sep.classList.remove('hidden');
+    }
+    if (shown.has(u.key)) {
+      const val = String(Math.floor(elapsed / u.div) % u.mod).padStart(2, '0');
+      if (val !== prevVals[u.key]) {
+        const el = document.getElementById('cv_' + u.key);
+        if (el) {
+          el.textContent = val;
+          el.classList.add('flash');
+          setTimeout(() => el.classList.remove('flash'), 150);
+        }
+        prevVals[u.key] = val;
+      }
+    }
+  });
+
+  for (let i = 0; i < GEARS; i++) {
+    const revs  = gearRevs(i);
+    const deg   = (i % 2 === 0 ? 1 : -1) * (revs * 360) % 360;
+    const rotor = document.getElementById(`rotor_${i}`);
+    if (rotor) rotor.setAttribute('transform', `rotate(${deg.toFixed(3)}, 19, 19)`);
+
+    if (i > 0 && revs > 0) {
+      const frac  = revs % 1;
+      const ring  = document.getElementById(`ring_${i}`);
+      const color = COLORS[i % 4];
+      if (ring) {
+        ring.style.borderColor = color;
+        ring.style.opacity     = Math.min(0.9, frac * 3).toFixed(2);
+        ring.style.boxShadow   = `0 0 ${Math.floor(frac * 10)}px ${color}55`;
+      }
+    }
+  }
+
+  const g1 = gearRevs(0);
+  const g2 = gearRevs(1);
+  document.getElementById('sG1').textContent  = g1.toFixed(2);
+  document.getElementById('sG2').textContent  = g2.toFixed(4);
+  document.getElementById('progBar').style.width = Math.min(100, g2 * 100).toFixed(2) + '%';
+  document.getElementById('sElapsed').textContent = Math.floor(elapsed);
+}
+
+function loop(ts) {
+  if (!running) return;
+  if (!lastTs) lastTs = ts;
+  const dt = Math.min((ts - lastTs) / 1000, 0.05);
+  lastTs   = ts;
+  elapsed += dt;
+  tick();
+  rafId = requestAnimationFrame(loop);
+}
+
+document.getElementById('btnStart').addEventListener('click', () => {
+  if (running) return;
+  document.getElementById('startZone').classList.add('gone');
+  shown.add('s');
+  document.getElementById('cu_s').classList.remove('hidden');
+  running = true;
+  lastTs  = null;
+  rafId   = requestAnimationFrame(loop);
+});
+
+buildClock();
+buildGrid();
+</script>
+</body>
+</html>
 
