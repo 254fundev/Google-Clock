@@ -5,18 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Gear Clock</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500;700&family=Roboto:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Roboto:wght@400;500;700&display=swap');
 
 :root {
-  --blue:   #4285F4;
-  --red:    #EA4335;
-  --yellow: #FBBC05;
-  --green:  #34A853;
   --bg:     #0f1011;
   --card:   #1a1b1c;
   --border: #2a2b2d;
   --text:   #e8eaed;
   --muted:  #5f6368;
+  --blue:   #4285F4;
+  --green:  #34A853;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -50,11 +48,8 @@ header {
   font-size: 21px;
   font-weight: 700;
   letter-spacing: -0.5px;
+  color: var(--text);
 }
-.b { color: var(--blue); }
-.r { color: var(--red); }
-.y { color: var(--yellow); }
-.g { color: var(--green); }
 
 .tagline {
   font-size: 10px;
@@ -207,16 +202,6 @@ header {
 
 .btn-start:active { transform: scale(0.95); }
 
-.sec-label {
-  width: 100%;
-  max-width: 560px;
-  padding: 2px 16px 10px;
-  font-size: 9px;
-  color: var(--muted);
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-}
-
 .gear-grid {
   width: 100%;
   max-width: 560px;
@@ -236,17 +221,6 @@ header {
   align-items: center;
   gap: 4px;
   position: relative;
-  transition: border-color 0.4s, box-shadow 0.4s, background 0.4s;
-}
-
-.glow-ring {
-  position: absolute;
-  inset: -2px;
-  border-radius: 11px;
-  border: 1.5px solid transparent;
-  pointer-events: none;
-  transition: border-color 0.3s, box-shadow 0.3s, opacity 0.3s;
-  opacity: 0;
 }
 
 .g-num {
@@ -267,24 +241,23 @@ header {
   display: block;
 }
 
-.g-lbl {
-  font-size: 6.5px;
-  color: var(--muted);
-  text-align: center;
-  line-height: 1.3;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 62px;
+canvas#fireworks {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 999;
 }
 </style>
 </head>
 <body>
 
+<canvas id="fireworks"></canvas>
+
 <header>
-  <div class="logo">
-    <span class="b">G</span><span class="r">e</span><span class="y">a</span><span class="g">r</span><span class="b">s</span>
-  </div>
+  <div class="logo">Gear Clock</div>
   <span class="tagline">Time Engine</span>
 </header>
 
@@ -293,8 +266,8 @@ header {
 </div>
 
 <div class="status">
-  <div class="pill">Gear 1: <em id="sG1">0.00</em> rev</div>
-  <div class="pill">Gear 2: <em id="sG2">0.0000</em> rev</div>
+  <div class="pill">G1 <em id="sG1">0.00</em></div>
+  <div class="pill">G2 <em id="sG2">0.0000</em></div>
   <div class="prog-wrap"><div class="prog-bar" id="progBar"></div></div>
   <div class="pill"><em id="sElapsed">0</em>s</div>
 </div>
@@ -303,66 +276,83 @@ header {
   <button class="btn-start" id="btnStart">▶ Start</button>
 </div>
 
-<div class="sec-label">100 gears</div>
 <div class="gear-grid" id="gearGrid"></div>
 
-<script>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCtylJnBrTfAyrs8JUoc-L1sDXI5YsG20U",
+  authDomain: "gear-clock-c8519.firebaseapp.com",
+  projectId: "gear-clock-c8519",
+  storageBucket: "gear-clock-c8519.firebasestorage.app",
+  messagingSenderId: "583077431773",
+  appId: "1:583077431773:web:7ba8dd1a1013cc7f520e34"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+const ref = doc(db, 'clock', 'state');
+
 const GEARS   = 100;
 const G1_SECS = 1;
 const RATIO   = 10;
-const COLORS  = ['#4285F4','#EA4335','#FBBC05','#34A853'];
-
-const LABELS = [
-  'Seconds','Minutes','Hours','Days','Weeks',
-  'Months','Years','Decades','Centuries','Millennia',
-  '10K Yrs','100K Yrs','1M Yrs','10M Yrs','100M Yrs',
-  '1B Yrs','10B Yrs','100B Yrs','1T Yrs','10T Yrs',
-  '100T Yrs','Eon','2 Eons','5 Eons','10 Eons',
-  '50 Eons','Galactic Yr','10 Gal Yrs','100 Gal Yrs','Stellar End',
-  'BH Era I','BH Era II','BH Era III','Proton Decay','Quantum I',
-  'Quantum II','Quantum III','Heat Death I','Heat Death II','Heat Death III',
-  ...Array.from({length: 60}, (_, i) => `Epoch ${i + 41}`)
-];
+const CA      = '#4285F4';
+const CB      = '#34A853';
 
 const CLOCK_UNITS = [
-  { key: 'mil', label: 'Millennia', div: 31536000000,  mod: 1e9, gear: 9 },
-  { key: 'cen', label: 'Centuries', div: 3153600000,   mod: 10,  gear: 8 },
-  { key: 'dec', label: 'Decades',   div: 315360000,    mod: 10,  gear: 7 },
-  { key: 'yr',  label: 'Years',     div: 31536000,     mod: 10,  gear: 6 },
-  { key: 'mo',  label: 'Months',    div: 2628000,      mod: 12,  gear: 5 },
-  { key: 'wk',  label: 'Weeks',     div: 604800,       mod: 52,  gear: 4 },
-  { key: 'd',   label: 'Days',      div: 86400,        mod: 7,   gear: 3 },
-  { key: 'h',   label: 'Hours',     div: 3600,         mod: 24,  gear: 2 },
-  { key: 'm',   label: 'Minutes',   div: 60,           mod: 60,  gear: 1 },
-  { key: 's',   label: 'Seconds',   div: 1,            mod: 60,  gear: 0 },
+  { key:'mil', label:'Millennia', div:31536000000, mod:1e9, gear:9 },
+  { key:'cen', label:'Centuries', div:3153600000,  mod:10,  gear:8 },
+  { key:'dec', label:'Decades',   div:315360000,   mod:10,  gear:7 },
+  { key:'yr',  label:'Years',     div:31536000,    mod:10,  gear:6 },
+  { key:'mo',  label:'Months',    div:2628000,     mod:12,  gear:5 },
+  { key:'wk',  label:'Weeks',     div:604800,      mod:52,  gear:4 },
+  { key:'d',   label:'Days',      div:86400,       mod:7,   gear:3 },
+  { key:'h',   label:'Hours',     div:3600,        mod:24,  gear:2 },
+  { key:'m',   label:'Minutes',   div:60,          mod:60,  gear:1 },
+  { key:'s',   label:'Seconds',   div:1,           mod:60,  gear:0 },
 ];
 
 function makeSVG(i) {
-  const color  = COLORS[i % 4];
-  const teeth  = 10 + (i % 3) * 2;
+  const color  = i % 2 === 0 ? CA : CB;
+  const teeth  = 12;
   const cx = 19, cy = 19;
   const ro = 15, ri = 11, rh = 3.5;
-  let pts = '';
-  for (let t = 0; t < teeth * 2; t++) {
-    const a = (Math.PI * 2 / (teeth * 2)) * t - Math.PI / 2;
-    const r = t % 2 === 0 ? ro : ri;
-    pts += `${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)} `;
+  const whiteIdx = 0;
+
+  let polygons = '';
+  for (let t = 0; t < teeth; t++) {
+    const a0 = (Math.PI * 2 / teeth) * t - Math.PI / 2;
+    const a1 = a0 + (Math.PI / teeth) * 0.45;
+    const a2 = a0 + (Math.PI / teeth) * 0.55;
+    const a3 = a0 + (Math.PI * 2 / teeth);
+    const pts = [
+      [cx + ri * Math.cos(a0), cy + ri * Math.sin(a0)],
+      [cx + ro * Math.cos(a1), cy + ro * Math.sin(a1)],
+      [cx + ro * Math.cos(a2), cy + ro * Math.sin(a2)],
+      [cx + ri * Math.cos(a3), cy + ri * Math.sin(a3)],
+    ].map(p => p[0].toFixed(2) + ',' + p[1].toFixed(2)).join(' ');
+    const fill = t === whiteIdx ? '#ffffff' : color;
+    polygons += `<polygon points="${pts}" fill="${fill}"/>`;
   }
+
   let spokes = '';
   for (let s = 0; s < 4; s++) {
     const a  = (Math.PI / 2) * s;
     const x1 = (cx + rh * Math.cos(a)).toFixed(2);
     const y1 = (cy + rh * Math.sin(a)).toFixed(2);
-    const x2 = (cx + (ri - 1.5) * Math.cos(a)).toFixed(2);
-    const y2 = (cy + (ri - 1.5) * Math.sin(a)).toFixed(2);
-    spokes += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="2.5" stroke-linecap="round" opacity="0.55"/>`;
+    const x2 = (cx + (ri - 1) * Math.cos(a)).toFixed(2);
+    const y2 = (cy + (ri - 1) * Math.sin(a)).toFixed(2);
+    spokes += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="2" stroke-linecap="round" opacity="0.4"/>`;
   }
+
   return `<svg viewBox="0 0 38 38" id="svg_${i}" xmlns="http://www.w3.org/2000/svg">
     <g id="rotor_${i}">
-      <polygon points="${pts.trim()}" fill="${color}" opacity="0.88"/>
+      ${polygons}
       <circle cx="${cx}" cy="${cy}" r="${ri - 0.5}" fill="#0f1011"/>
       ${spokes}
-      <circle cx="${cx}" cy="${cy}" r="${rh}" fill="${color}" opacity="0.65"/>
+      <circle cx="${cx}" cy="${cy}" r="${rh}" fill="${color}" opacity="0.5"/>
     </g>
   </svg>`;
 }
@@ -391,21 +381,97 @@ function buildGrid() {
     const card = document.createElement('div');
     card.className = 'gc';
     card.id = `gc_${i}`;
-    card.innerHTML = `
-      <div class="glow-ring" id="ring_${i}"></div>
-      <div class="g-num">#${i + 1}</div>
-      <div class="g-svg-wrap">${makeSVG(i)}</div>
-      <div class="g-lbl">${LABELS[i] || 'Epoch'}</div>`;
+    card.innerHTML = `<div class="g-num">#${i + 1}</div><div class="g-svg-wrap">${makeSVG(i)}</div>`;
     grid.appendChild(card);
   }
 }
 
-let running  = false;
+// ── FIREWORKS ──
+const canvas = document.getElementById('fireworks');
+const ctx    = canvas.getContext('2d');
+let particles = [];
+
+function resizeCanvas() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+function burst(x, y) {
+  const colors = ['#4285F4','#EA4335','#FBBC05','#34A853','#ffffff','#ff6ec7'];
+  for (let i = 0; i < 120; i++) {
+    const angle  = Math.random() * Math.PI * 2;
+    const speed  = 2 + Math.random() * 6;
+    const color  = colors[Math.floor(Math.random() * colors.length)];
+    const size   = 2 + Math.random() * 3;
+    const type   = Math.random() < 0.4 ? 'star' : 'circle';
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      alpha: 1,
+      color,
+      size,
+      type,
+      gravity: 0.12,
+      decay: 0.012 + Math.random() * 0.01
+    });
+  }
+}
+
+function triggerCelebration() {
+  const cx = window.innerWidth / 2;
+  const cy = window.innerHeight / 3;
+  burst(cx, cy);
+  setTimeout(() => burst(cx - 120, cy + 60), 180);
+  setTimeout(() => burst(cx + 120, cy + 60), 320);
+  setTimeout(() => burst(cx, cy + 20),        480);
+}
+
+function drawParticle(p) {
+  ctx.save();
+  ctx.globalAlpha = p.alpha;
+  ctx.fillStyle   = p.color;
+  if (p.type === 'star') {
+    ctx.translate(p.x, p.y);
+    ctx.beginPath();
+    for (let s = 0; s < 5; s++) {
+      const a = (s * 4 * Math.PI) / 5 - Math.PI / 2;
+      s === 0 ? ctx.moveTo(Math.cos(a) * p.size, Math.sin(a) * p.size)
+              : ctx.lineTo(Math.cos(a) * p.size, Math.sin(a) * p.size);
+    }
+    ctx.closePath();
+    ctx.fill();
+  } else {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function animateParticles() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  particles = particles.filter(p => p.alpha > 0.01);
+  for (const p of particles) {
+    p.x     += p.vx;
+    p.y     += p.vy;
+    p.vy    += p.gravity;
+    p.alpha -= p.decay;
+    drawParticle(p);
+  }
+  requestAnimationFrame(animateParticles);
+}
+animateParticles();
+
+// ── CLOCK & GEARS ──
 let elapsed  = 0;
 let lastTs   = null;
 let rafId    = null;
 let shown    = new Set();
 let prevVals = {};
+let prevRevFloor = new Array(GEARS).fill(0);
 
 function gearRevs(i) {
   if (i >= 20) return 0;
@@ -413,7 +479,7 @@ function gearRevs(i) {
 }
 
 function tick() {
-  CLOCK_UNITS.forEach((u, idx) => {
+  CLOCK_UNITS.forEach((u) => {
     const revs = gearRevs(u.gear);
     if ((revs > 0.001 || u.gear === 0) && !shown.has(u.key)) {
       shown.add(u.key);
@@ -437,32 +503,29 @@ function tick() {
 
   for (let i = 0; i < GEARS; i++) {
     const revs  = gearRevs(i);
-    const deg   = (i % 2 === 0 ? 1 : -1) * (revs * 360) % 360;
+    const dir   = i % 2 === 0 ? 1 : -1;
+    const deg   = dir * (revs * 360) % 360;
     const rotor = document.getElementById(`rotor_${i}`);
     if (rotor) rotor.setAttribute('transform', `rotate(${deg.toFixed(3)}, 19, 19)`);
 
-    if (i > 0 && revs > 0) {
-      const frac  = revs % 1;
-      const ring  = document.getElementById(`ring_${i}`);
-      const color = COLORS[i % 4];
-      if (ring) {
-        ring.style.borderColor = color;
-        ring.style.opacity     = Math.min(0.9, frac * 3).toFixed(2);
-        ring.style.boxShadow   = `0 0 ${Math.floor(frac * 10)}px ${color}55`;
+    if (i >= 8) {
+      const floor = Math.floor(revs);
+      if (floor > prevRevFloor[i] && revs > 0) {
+        prevRevFloor[i] = floor;
+        triggerCelebration();
       }
+    } else {
+      prevRevFloor[i] = Math.floor(revs);
     }
   }
 
-  const g1 = gearRevs(0);
-  const g2 = gearRevs(1);
-  document.getElementById('sG1').textContent  = g1.toFixed(2);
-  document.getElementById('sG2').textContent  = g2.toFixed(4);
-  document.getElementById('progBar').style.width = Math.min(100, g2 * 100).toFixed(2) + '%';
+  document.getElementById('sG1').textContent  = gearRevs(0).toFixed(2);
+  document.getElementById('sG2').textContent  = gearRevs(1).toFixed(4);
+  document.getElementById('progBar').style.width = Math.min(100, gearRevs(1) * 100).toFixed(2) + '%';
   document.getElementById('sElapsed').textContent = Math.floor(elapsed);
 }
 
 function loop(ts) {
-  if (!running) return;
   if (!lastTs) lastTs = ts;
   const dt = Math.min((ts - lastTs) / 1000, 0.05);
   lastTs   = ts;
@@ -471,19 +534,37 @@ function loop(ts) {
   rafId = requestAnimationFrame(loop);
 }
 
-document.getElementById('btnStart').addEventListener('click', () => {
-  if (running) return;
-  document.getElementById('startZone').classList.add('gone');
+function startFrom(startedAt) {
+  elapsed = (Date.now() - startedAt) / 1000;
   shown.add('s');
   document.getElementById('cu_s').classList.remove('hidden');
-  running = true;
-  lastTs  = null;
-  rafId   = requestAnimationFrame(loop);
-});
+  document.getElementById('startZone').classList.add('gone');
+  for (let i = 0; i < GEARS; i++) prevRevFloor[i] = Math.floor(gearRevs(i));
+  requestAnimationFrame(loop);
+}
+
+// ── FIREBASE INIT ──
+async function init() {
+  const snap = await getDoc(ref);
+  if (snap.exists()) {
+    startFrom(snap.data().startedAt);
+  } else {
+    document.getElementById('btnStart').addEventListener('click', async () => {
+      const now = Date.now();
+      try {
+        await setDoc(ref, { startedAt: now });
+        startFrom(now);
+      } catch(e) {
+        const snap2 = await getDoc(ref);
+        if (snap2.exists()) startFrom(snap2.data().startedAt);
+      }
+    });
+  }
+}
 
 buildClock();
 buildGrid();
+init();
 </script>
 </body>
 </html>
-
